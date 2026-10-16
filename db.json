@@ -1,0 +1,22 @@
+{
+  "users": [
+    {
+      "id": "1",
+      "first_name": "Ana",
+      "last_name": "Silva",
+      "email_address": "ana.silva@tech.com",
+      "account_status": 1,
+      "user_role": "ADMIN_TI",
+      "created_at_utc": "2026-03-12T14:20:00.000Z"
+    },
+    {
+      "id": "2",
+      "first_name": "Bruno",
+      "last_name": "Mendes",
+      "email_address": "bruno.mendes@tech.com",
+      "account_status": 0,
+      "user_role": "DEFAULT_USER",
+      "created_at_utc": "2026-08-01T09:15:30.000Z"
+    }
+  ]
+}
