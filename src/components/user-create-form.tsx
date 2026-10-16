@@ -20,6 +20,8 @@ import {
   SelectValue,
 } from "./ui/select";
 
+const API_URL = "http://localhost:3333/users";
+
 export interface UserFormData {
   firstName: string;
   lastName: string;
@@ -29,6 +31,7 @@ export interface UserFormData {
 }
 
 interface UserCreateFormProps {
+  onSuccess?: (createdUser: any) => void;
   onSubmit?: (data: UserFormData) => void;
   isLoading?: boolean;
 }
@@ -42,11 +45,16 @@ const INITIAL_STATE: UserFormData = {
 };
 
 export const UserCreateForm = ({
+  onSuccess,
   onSubmit,
-  isLoading = false,
+  isLoading: externalLoading = false,
 }: UserCreateFormProps) => {
   const [open, setOpen] = React.useState(false);
   const [formData, setFormData] = React.useState<UserFormData>(INITIAL_STATE);
+  const [internalLoading, setInternalLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const isLoading = externalLoading || internalLoading;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type } = e.target;
@@ -59,15 +67,55 @@ export const UserCreateForm = ({
     }));
   };
 
-  const handleSubmit = (e: React.ChangeEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit?.(formData);
-    setFormData(INITIAL_STATE);
-    setOpen(false);
+    try {
+      setInternalLoading(true);
+      setError(null);
+
+      const payload = {
+        first_name: formData.firstName,
+        last_name: formData.lastName,
+        email_address: formData.email,
+        account_status: formData.isActive ? 1 : 0,
+        user_role: formData.role,
+        created_at_utc: new Date().toISOString(),
+      };
+
+      const response = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error("Erro ao cadastrar usuário");
+      }
+
+      const createdUser = await response.json();
+      onSubmit?.(formData);
+      onSuccess?.(createdUser);
+      setFormData(INITIAL_STATE);
+      setOpen(false);
+    } catch (err) {
+      console.error("Erro ao cadastrar usuário:", err);
+      setError("Falha ao cadastrar o usuário. Tente novamente.");
+    } finally {
+      setInternalLoading(false);
+    }
+  };
+
+  const handleOpenChange = (isOpen: boolean) => {
+    setOpen(isOpen);
+    if (!isOpen) {
+      setError(null);
+    }
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button className="h-9 gap-1.5 self-start sm:self-auto">
           <Plus className="size-4" />
@@ -85,6 +133,12 @@ export const UserCreateForm = ({
             equipe.
           </DialogDescription>
         </DialogHeader>
+
+        {error && (
+          <div className="rounded-md border border-rose-200 bg-rose-50 p-2.5 text-xs text-rose-700">
+            {error}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4 pt-2">
           <div className="grid grid-cols-2 gap-3">

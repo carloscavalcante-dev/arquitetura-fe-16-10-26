@@ -1,43 +1,53 @@
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createColumnHelper } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table";
 import { UserCreateForm } from "@/components/user-create-form";
-import { Edit, Trash } from "lucide-react";
 
 export interface User {
-  id: string;
+  id: string | number;
   first_name: string;
   last_name: string;
   email_address: string;
-  account_status: string;
+  account_status: string | number;
   user_role: string;
   created_at_utc: string;
 }
 
-const MOCK_USERS: User[] = [
-  {
-    id: "1",
-    first_name: "Ana",
-    last_name: "Silva",
-    email_address: "ana.silva@tech.com",
-    account_status: "1",
-    user_role: "ADMIN_TI",
-    created_at_utc: "2026-03-12T14:20:00.000Z",
-  },
-  {
-    id: "2",
-    first_name: "Bruno",
-    last_name: "Mendes",
-    email_address: "bruno.mendes@tech.com",
-    account_status: "0",
-    user_role: "DEFAULT_USER",
-    created_at_utc: "2026-08-01T09:15:30.000Z",
-  },
-];
+const API_URL = "http://localhost:3333/users";
 
 const columnHelper = createColumnHelper<User>();
 
 export const UserManagementPage = () => {
+  const [users, setUsers] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchUsers = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const response = await fetch(API_URL);
+      if (!response.ok) {
+        throw new Error("Erro ao buscar usuários");
+      }
+      const data = await response.json();
+      setUsers(data);
+    } catch (err) {
+      console.error("Erro ao carregar usuários:", err);
+      setError("Falha ao carregar a lista de usuários.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
+
+  const handleUserCreated = (createdUser: User) => {
+    setUsers((prev) => [...prev, createdUser]);
+  };
+
   const columns = useMemo(
     () => [
       columnHelper.accessor((row) => `${row.first_name} ${row.last_name}`, {
@@ -67,7 +77,7 @@ export const UserManagementPage = () => {
       columnHelper.accessor("account_status", {
         header: "Status",
         cell: (info) => {
-          const isActive = info.getValue() === "1";
+          const isActive = String(info.getValue()) === "1";
           return (
             <span
               className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
@@ -95,29 +105,6 @@ export const UserManagementPage = () => {
           );
         },
       }),
-
-      columnHelper.display({
-        id: "actions",
-        header: "Ações",
-        cell: ({ row }) => (
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => console.log("Editar:", row.original.id)}
-              className="text-xs font-medium text-blue-600 hover:text-blue-800"
-            >
-              <Edit />
-            </button>
-            <button
-              type="button"
-              onClick={() => console.log("Excluir:", row.original.id)}
-              className="text-xs font-medium text-rose-600 hover:text-rose-800"
-            >
-              <Trash />
-            </button>
-          </div>
-        ),
-      }),
     ],
     []
   );
@@ -133,10 +120,16 @@ export const UserManagementPage = () => {
             Listagem e controle de permissões de membros da equipe.
           </p>
         </div>
-        <UserCreateForm />
+        <UserCreateForm onSuccess={handleUserCreated} />
       </div>
 
-      <DataTable columns={columns} data={MOCK_USERS} />
+      {error && (
+        <div className="rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
+          {error}
+        </div>
+      )}
+
+      <DataTable columns={columns} data={users} isLoading={isLoading} />
     </div>
   );
 };
